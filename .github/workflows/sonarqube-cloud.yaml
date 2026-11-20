@@ -49,6 +49,7 @@ jobs:
         # sonar.* properties given here override the OpenMRS defaults set in pom.xml
         run: >
           mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -D"sonar.host.url"=https://sonarcloud.io
           -D"sonar.organization"=denis-troller-sonar
           -D"sonar.projectKey"=denis-troller-sonarsource_openmrs-core
           -D"maven.javadoc.skip"=true
