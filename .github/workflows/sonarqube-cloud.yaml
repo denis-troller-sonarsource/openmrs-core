@@ -1,0 +1,56 @@
+# SonarQube Cloud analysis (code quality, security and coverage)
+name: SonarQube Cloud
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: sonarqube-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    # Secrets are not available to PRs from forks, so the analysis cannot run for them
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # full history is required for accurate blame information and new code detection
+          fetch-depth: 0
+      - name: Setup JDK
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: 'temurin'
+          java-version: 21
+          cache: 'maven'
+      - name: Cache SonarQube Cloud packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Build, test and analyze
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # sonar.* properties given here override the OpenMRS defaults set in pom.xml
+        run: >
+          mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -D"sonar.organization"=denis-troller-sonar
+          -D"sonar.projectKey"=denis-troller-sonarsource_openmrs-core
+          -D"maven.javadoc.skip"=true
+          -D"spotbugs.skip"=true
+          --batch-mode --show-version --file pom.xml
